@@ -1,0 +1,94 @@
+THE JOB
+Build a one-page, scrolling credit monitoring dashboard for a private credit book of unrated, sponsor-backed US and UK companies, as one self-contained HTML file (data, styles and scripts inline, no external libraries) that works offline and prints to PDF.
+
+THE WHY
+I'm a relationship manager at Moody's preparing this for a client's monthly Investment Committee. They need to see, on one page they can read without me in the room, where the book stands on Moody's data and what in the market is moving credit. It also shows them what Moody's data can do inside Claude, so anything that looks invented or empty costs me credibility.
+
+THE GUARDRAILS
+- Use the Moody's Credit MCP for everything except the Market headlines strip in section 3, which uses web search. The page is a showcase of Moody's data, so the one web-sourced strip is labelled as such.
+- Resolve the companies by BvD ID in a single findEntity call, passing all the IDs together in the data field (the bvdId field takes only one). Name search matches the wrong legal entity for several of these. If an ID doesn't resolve or has no EDF-X PD, leave the name out and list it in the footer.
+- These companies have no Moody's rating. Call every portfolio rating a "PD implied rating", never a "rating", because presenting a model output as a Moody's rating would be wrong and is a compliance problem. The sovereign ratings in section 2 are Moody's ratings and are labelled as such.
+- Show only what Moody's returns. No projections or estimates of your own, and no empty fields, "N/A" or "Not in Moody's data": the committee reads this alone, and a blank reads as Moody's not knowing. In tables and charts use only fields Moody's returns for every name. In the company view show a line only where Moody's has it.
+- Leave out revenue, EBITDA and employee numbers. Moody's has them for too few of these names, and several look unreliable.
+- Keep the Moody's news feed off the page. For these small private names it returns unrelated articles. Use Moody's research (searchAllDocuments) instead.
+- Outside section 8, don't name any company as being on watch or on early warning. Company-level data on this book is thin, and I don't want the committee's attention pulled onto a few names.
+- Write every summary in your own words, since the page will be shared outside Moody's and shouldn't reproduce report or article text.
+- Build these eight sections and the footer, nothing more. Make routine judgment calls yourself. Ask me only if the Moody's connection isn't available, or if fewer than 10 of the companies resolve.
+
+COMPANIES
+Display name | BvD ID
+D4C Dental Brands | US276264467L
+National Debt Relief | US326865290L
+Kemper Sports | US245340701L
+Everfield | GB14073232
+Planet DDS | US296365016L
+BasePoint Capital | US374714906L
+Opexus (Ains LLC) | US373265015L
+Above Lending | US362003681L
+Rawlings | US431674348
+Redwood Software | US126941145L
+Gonetspeed | US421219976L
+Epiphany | US307562534L
+Greenlight Telecoms | GBML11222637
+W2O Group | US257638445L
+Cenexel | US317418398L
+Jensen Hughes | US262639670L
+RegEd | US126920767L
+Univista | [BvD ID]
+Extend Financial | [BvD ID]
+
+WHAT I LEARNED RUNNING THIS BEFORE
+- PD basis: read it from the EDF-X confidence description. "Company data" is the payment or RiskCalc model. "Sector benchmark" is the benchmark model with no financials. Benchmark names in the same sector share an identical PD, and early warning scores exist only for company-data names.
+- EDF-X returns PDs as decimals (0.0037). Show them as percentages to two decimals (0.37%).
+- getEntitySectorOutlook fails for unrated names. Get sector views from searchAllDocuments filtered by sector, region and document type.
+- The Key Indicators table in each sovereign credit opinion (getCreditOpinion with KeyIndicatorsTable) has GDP and inflation forecasts for both countries. Research text searches give uneven macro figures.
+- getEntityProfile for all names at once returns a very large result. Parse it with a script and keep only city, state, website, NAICS description, year of incorporation and business description.
+- getEntityUltimateOwners often returns the company itself. Show an owner only when it is a different entity (use the 25.01% threshold).
+- "Last 6 months" means the latest month and the six before it, so 7 monthly points. Some names have less history. Use what exists.
+- 3-month change: a plus sign means the PD implied rating improved, a minus sign means it fell.
+- Sector report titles use Moody's parent sectors. Accept a close parent (Healthcare Services for Medical services, Consumer Products for Consumer durables), and treat North America as US. If the report is about a different kind of business, don't use it.
+- The default series are titled "Moody's Ratings: Defaults ..." (monthly), "US Corporate Default Monitor" and "EMEA Corporate Default Monitor" (quarterly) and "Moody's B3 Negative and Lower Corporate Ratings List". Search for those titles.
+- searchAllDocuments filters let through public finance, structured finance and company credit opinions. Drop them by hand.
+- If the ultimate owner comes back as an individual, show the fund or firm returned with it. If there is none, leave the owner line out.
+- Moody's sector labels come back as "Corporates, Medical_Services". Show clean labels ("Medical services").
+
+DESIGN
+Moody's branding: navy header (#0a1264) with "Moody's" as the wordmark, the title "Private Credit Portfolio Monitor", and on the right "Monthly Investment Committee view", the EDF-X data date and the date prepared. Light grey page, white cards with thin borders, navy section headings in small capitals. PD implied ratings are colour coded: Baa green, Ba amber, B and below red. Early warning: Low green, Medium amber, High red, Severe dark red. On a phone it is a single column and tables scroll sideways.
+
+THE PAGE, TOP TO BOTTOM
+
+1. Portfolio at a glance: four tiles showing counts only.
+- Names covered, with the split of company data and sector benchmark names underneath.
+- Median PD implied rating.
+- PD implied rating fell, 3 months: the count among company-data names. Underneath: "Of the X names with company-level data".
+- Names on early warning: the count at Medium, High or Severe now. Underneath: "Moody's has an early warning score for X of the Y names".
+
+2. Macro backdrop: six tiles, each with its document title and date. Where documents differ, use the most recent.
+- US real GDP growth, US inflation, UK real GDP growth, UK inflation: current year and next year forecasts from the sovereign credit opinions, with each sovereign's Moody's rating and outlook in the source line.
+- US speculative-grade default rate: latest actual and Moody's 12-month forecast.
+- US middle-market private credit default rate from Moody's latest private credit research.
+
+3. What is moving credit: four theme cards from Moody's research in the last 12 months: Artificial intelligence, Energy and oil prices, Interest rates and refinancing, Private credit stress. Each card has Moody's view in two sentences, the report titles and dates, and "In this book": the sectors the theme touches with the number of names in each. Private credit stress applies to all names. For the other three, list a sector where a Moody's report from the last 12 months discusses that theme for that sector.
+Under the cards, a strip titled "Market headlines · web sources, not Moody's data": up to 10 of the most relevant web headlines from the last 30 days, covering as many of these topics as have news: oil prices, central bank rates, US and UK macro data, tariffs, private credit defaults, leveraged loan markets and AI in credit. Each has a date, a one-line summary and the source name as a link.
+
+4. PD implied rating distribution by notch: one coloured bar per notch with the number of companies. Under it: "Number of companies at each PD implied rating. Source: Moody's EDF-X, [date]". Clicking a notch filters the issuer table.
+
+5. Names by sector (beside section 4 on desktop): one bar per sector with the count. Clicking a bar opens Moody's view of that sector under the chart: the most recent Sector In-Depth or Outlook report from the last 12 months whose title matches the sector, for the region (US or UK) with more names in that sector, showing title, document type, date and 3 credit points. A sector with no matching report doesn't open.
+
+6. Issuers: table with name, headquarters (city and state, or city and country for UK names), sector, EDF-X PD, PD implied rating, 3-month change in notches with the earlier rating (for example "+2 (from B2)"), and PD basis. Sorted by PD, highest first, and sortable by any column. Filters for sector, country and PD basis, with a clear-filters button. Under the table: "Sector benchmark PDs move with the sector, not the company."
+Clicking a row opens the company view under it: one-line business description, headquarters, website, industry, year incorporated, ultimate owner, Moody's sector, PD basis, and a line chart of the monthly PD over the last 6 months.
+
+7. Latest from Moody's: Moody's research from the last 60 days, aiming for 30 to 40 items. Search separately for: the monthly default reports, the quarterly default monitors (US and EMEA) and the B3 negative and lower lists; private credit and BDCs; leveraged finance and refinancing studies; AI; energy; US and UK macro and sovereign updates; the cross-sector 2027 outlooks; and each sector in the book. Leave out company-specific credit opinions (keep the US and UK sovereign ones), structured finance deal notices and public finance. Each item has date, title, document type, a one-line summary and one tag (Defaults, Private credit, Refinancing, AI, Macro, Energy, or a sector). Newest first. Filter buttons for Last 14 days, Last 30 days and Last 60 days, and one per tag showing its count. Show the first 12 with a "Show all" button.
+
+8. Names to watch: the last section, closed by default. It shows as one line, "Names to watch · click to show", and opens on click.
+Inside, company-data names only: any name at Medium, High or Severe early warning now or in any of the last 6 months, or whose PD implied rating differed by 2 or more notches between any two months in that time. One card per name, most severe current early warning first and highest PD first within a category: sector, PD, PD implied rating, early warning category and distance to trigger; a chart of the monthly PD (solid line, dots coloured by that month's early warning category) with the peer-group trigger as a dashed line; two sentences on what changed and whether it has improved or worsened. Add one line from the sector report only where it matches the name's sector and country, with title and date.
+
+Footer: names not included and why; a note that the Market headlines strip uses web sources and everything else is Moody's data and research; a note that portfolio ratings are PD implied ratings from EDF-X, not Moody's credit ratings.
+
+DONE MEANS
+- All eight sections have content, with no "undefined", "NaN" or empty fields anywhere.
+- The counts in the tiles, the distribution chart and the issuer table agree, and every filter and click works.
+- Every figure on the page carries its date and source.
+- One HTML file, readable on a phone.
+- When you finish, tell me where the file is and give me 3 short bullets: how many names are on the page, anything you left out and why, and any Moody's call that failed. Nothing more.
+Before reporting progress, audit each claim against a tool result from this session. Only report work you can point to evidence for; if something is not yet verified, say so explicitly. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.
